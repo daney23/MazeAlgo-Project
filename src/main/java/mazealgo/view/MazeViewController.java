@@ -2,17 +2,22 @@ package mazealgo.view;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
 import javafx.collections.SetChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import mazealgo.model.MazeModel;
 import mazealgo.model.algorithms.search.AState;
 import mazealgo.viewmodel.MazeViewModel;
@@ -20,17 +25,17 @@ import mazealgo.viewmodel.MovementDirection;
 
 /**
  * Controller for {@code MazeView.fxml}. Owns the {@link MazeViewModel}
- * and wires it to the FXML-injected nodes: spinners for dimensions,
- * the {@link MazeDisplayer} canvas, the Generate / Solution Hint /
- * Watch Search buttons, and the status / nodes / zoom labels.
+ * and wires it to the FXML-injected nodes.
  *
  * <p>Input handling lives here:
  * <ul>
- *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions</li>
+ *   <li>2D/3D toggle → switches displayers, shows/hides the Depth spinner</li>
+ *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions (2D only)</li>
  *   <li>Ctrl + scroll wheel anywhere on the canvas → zoom in/out</li>
- *   <li>Generate → new maze with the spinner-selected dimensions</li>
- *   <li>Solution Hint → run Best-First synchronously, draw the path</li>
- *   <li>Watch Search → run Best-First async, paint cells as they're visited</li>
+ *   <li>Generate → new 2D maze, or new 3D maze when in 3D mode</li>
+ *   <li>Algorithm ComboBox → BFS / DFS / Best-First; affects both Hint and Watch</li>
+ *   <li>Solution Hint → solves and draws the path</li>
+ *   <li>Watch Search → animates the chosen algorithm visiting cells</li>
  * </ul>
  *
  * <p>The controller listens to the ViewModel's {@code victoryProperty}
@@ -60,41 +65,72 @@ public class MazeViewController {
     }
 
     @FXML private BorderPane root;
-    @FXML private Pane mazeContainer;
+    @FXML private StackPane mazeContainer;
+    @FXML private Pane maze2DContainer;
+    @FXML private Pane maze3DContainer;
     @FXML private MazeDisplayer mazeDisplayer;
+    @FXML private Maze3DDisplayer maze3DDisplayer;
     @FXML private Spinner<Integer> rowsSpinner;
     @FXML private Spinner<Integer> colsSpinner;
+    @FXML private Spinner<Integer> depthSpinner;
+    @FXML private Label depthLabel;
     @FXML private Button generateButton;
     @FXML private Button hintButton;
     @FXML private Button watchButton;
     @FXML private Label statusLabel;
     @FXML private Label nodesLabel;
     @FXML private Label zoomLabel;
+    @FXML private ToggleGroup modeGroup;
+    @FXML private ToggleButton mode2DButton;
+    @FXML private ToggleButton mode3DButton;
+    @FXML private ComboBox<String> algorithmCombo;
 
     @FXML
     private void initialize() {
-        // Resize the canvas with its parent pane. Canvas isn't auto-resizable
-        // in a Pane, so bind manually — the displayer's listeners pick it up
-        // and redraw.
-        mazeDisplayer.widthProperty().bind(mazeContainer.widthProperty());
-        mazeDisplayer.heightProperty().bind(mazeContainer.heightProperty());
+        // Canvas resize bindings — each displayer fills its own Pane.
+        mazeDisplayer.widthProperty().bind(maze2DContainer.widthProperty());
+        mazeDisplayer.heightProperty().bind(maze2DContainer.heightProperty());
+        maze3DDisplayer.widthProperty().bind(maze3DContainer.widthProperty());
+        maze3DDisplayer.heightProperty().bind(maze3DContainer.heightProperty());
 
-        // Spinner factories: 5..200 with sensible defaults.
+        // Spinner factories.
         rowsSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 200, 20));
         colsSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 200, 20));
+        depthSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(2, 20, 4));
 
-        // Bind displayer to ViewModel — read-only direction for maze/player/solution.
+        // 2D displayer bindings.
         mazeDisplayer.mazeProperty().bind(viewModel.mazeProperty());
         mazeDisplayer.playerRowProperty().bind(viewModel.playerRowProperty());
         mazeDisplayer.playerColumnProperty().bind(viewModel.playerColumnProperty());
         mazeDisplayer.solutionProperty().bind(viewModel.solutionProperty());
 
-        // Mirror the ViewModel's visited set into the displayer (ObservableSet
-        // has no built-in bindContent, so route changes via a listener).
+        // 3D displayer bindings.
+        maze3DDisplayer.maze3DProperty().bind(viewModel.maze3DProperty());
+        maze3DDisplayer.solutionProperty().bind(viewModel.solutionProperty());
+
+        // Mirror visited set into both displayers — each ignores states of the
+        // wrong type, so they coexist with no extra filtering needed here.
         viewModel.getVisitedStates().addListener((SetChangeListener<AState>) change -> {
-            if (change.wasAdded())   mazeDisplayer.getVisitedCells().add(change.getElementAdded());
-            if (change.wasRemoved()) mazeDisplayer.getVisitedCells().remove(change.getElementRemoved());
+            if (change.wasAdded()) {
+                mazeDisplayer.getVisitedCells().add(change.getElementAdded());
+                maze3DDisplayer.getVisitedCells().add(change.getElementAdded());
+            }
+            if (change.wasRemoved()) {
+                mazeDisplayer.getVisitedCells().remove(change.getElementRemoved());
+                maze3DDisplayer.getVisitedCells().remove(change.getElementRemoved());
+            }
         });
+
+        // Mode wiring: toggle buttons drive a shared ViewModel state.
+        mode2DButton.setOnAction(e -> setMode(MazeViewModel.Mode.TWO_D));
+        mode3DButton.setOnAction(e -> setMode(MazeViewModel.Mode.THREE_D));
+        viewModel.modeProperty().addListener((obs, oldMode, newMode) -> applyMode(newMode));
+        applyMode(viewModel.modeProperty().get());
+
+        // Algorithm combo.
+        algorithmCombo.setItems(FXCollections.observableArrayList(
+                MazeViewModel.ALGO_BEST_FIRST, MazeViewModel.ALGO_BFS, MazeViewModel.ALGO_DFS));
+        algorithmCombo.valueProperty().bindBidirectional(viewModel.algorithmChoiceProperty());
 
         // Labels.
         zoomLabel.textProperty().bind(Bindings.format("Zoom %.0f%%",
@@ -116,9 +152,7 @@ public class MazeViewController {
             }
         });
 
-        // The root pane needs keyboard focus to receive key events. Request
-        // it once the scene is attached; before that, the root has no scene
-        // and focus requests are no-ops.
+        // Keyboard + scroll once the scene is attached.
         Platform.runLater(() -> {
             if (root.getScene() != null) {
                 root.setFocusTraversable(true);
@@ -131,20 +165,49 @@ public class MazeViewController {
         soundPlayer.playBackground();
     }
 
+    private void setMode(MazeViewModel.Mode m) {
+        if (viewModel.modeProperty().get() == m) return;
+        viewModel.modeProperty().set(m);
+    }
+
+    private void applyMode(MazeViewModel.Mode m) {
+        boolean threeD = m == MazeViewModel.Mode.THREE_D;
+        mode2DButton.setSelected(!threeD);
+        mode3DButton.setSelected(threeD);
+        maze2DContainer.setVisible(!threeD);
+        maze3DContainer.setVisible(threeD);
+        depthLabel.setVisible(threeD);
+        depthSpinner.setVisible(threeD);
+        depthLabel.setManaged(threeD);
+        depthSpinner.setManaged(threeD);
+        statusLabel.setText(threeD
+                ? "3D mode — Generate makes a Maze3D; player movement is disabled. Use Hint / Watch."
+                : "Hit Generate to make a maze, then WASD or Arrow keys to move. Ctrl + scroll to zoom.");
+    }
+
     @FXML
     private void onGenerate() {
         int rows = rowsSpinner.getValue();
         int cols = colsSpinner.getValue();
-        viewModel.generate(rows, cols);
         mazeDisplayer.getVisitedCells().clear();
-        statusLabel.setText(String.format("Generated %d×%d. WASD or Arrow keys to move.", rows, cols));
+        maze3DDisplayer.getVisitedCells().clear();
+        if (viewModel.modeProperty().get() == MazeViewModel.Mode.THREE_D) {
+            int depth = depthSpinner.getValue();
+            viewModel.generate3D(depth, rows, cols);
+            statusLabel.setText(String.format("Generated 3D %d×%d×%d (depth×rows×cols).",
+                    depth, rows, cols));
+        } else {
+            viewModel.generate(rows, cols);
+            statusLabel.setText(String.format("Generated %d×%d. WASD or Arrow keys to move.", rows, cols));
+        }
         root.requestFocus();
     }
 
     @FXML
     private void onSolutionHint() {
         viewModel.solveCurrent();
-        statusLabel.setText(String.format("Best-First found a path in %d nodes.",
+        statusLabel.setText(String.format("%s found a path in %d nodes.",
+                viewModel.algorithmChoiceProperty().get(),
                 viewModel.nodesEvaluatedProperty().get()));
         root.requestFocus();
     }
@@ -152,7 +215,9 @@ public class MazeViewController {
     @FXML
     private void onWatchSearch() {
         mazeDisplayer.getVisitedCells().clear();
-        statusLabel.setText("Watching Best-First search…");
+        maze3DDisplayer.getVisitedCells().clear();
+        statusLabel.setText(String.format("Watching %s search…",
+                viewModel.algorithmChoiceProperty().get()));
         viewModel.visualizeSearchAsync();
         root.requestFocus();
     }
@@ -167,19 +232,20 @@ public class MazeViewController {
 
     private void onScroll(ScrollEvent e) {
         if (!e.isControlDown()) return;
-        double current = mazeDisplayer.zoomProperty().get();
+        // Zoom whichever displayer is active.
+        boolean threeD = viewModel.modeProperty().get() == MazeViewModel.Mode.THREE_D;
+        double current = threeD ? maze3DDisplayer.zoomProperty().get() : mazeDisplayer.zoomProperty().get();
         double next = e.getDeltaY() > 0 ? current * ZOOM_STEP : current / ZOOM_STEP;
         next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next));
-        mazeDisplayer.zoomProperty().set(next);
+        if (threeD) maze3DDisplayer.zoomProperty().set(next);
+        else mazeDisplayer.zoomProperty().set(next);
         e.consume();
     }
 
     /**
-     * WASD and arrow keys both drive the four cardinal directions.
-     * Diagonals are intentionally unmapped — the diagonal pinhole rule
-     * still governs the search algorithm's edges; players move
-     * orthogonally and the algorithm decides if a diagonal step would
-     * have been legal on the optimal path.
+     * WASD and arrow keys drive the four cardinal directions in 2D mode.
+     * 3D mode is visualization-only, so the ViewModel's movePlayer is a
+     * no-op there — the event filter still fires but does nothing.
      */
     private static MovementDirection directionForKey(KeyCode code) {
         return switch (code) {
