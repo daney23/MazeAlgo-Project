@@ -6,6 +6,14 @@ This started as a university assignment and is being built out into a portfolio-
 
 ---
 
+## TL;DR
+
+- **What it is.** A maze engine — generates 2D/3D mazes, solves them with BFS / DFS / Best-First (A* with admissible heuristics), and serves both operations over sockets.
+- **Status.** Phases 1–2 of 4 done. `mvn clean test` → BUILD SUCCESS, 26 / 26 tests pass. JavaFX UI is Phase 3, in progress.
+- **For the technically curious.** Adapter, Strategy, Decorator, and Template Method patterns all appear here in real load-bearing roles — not as toy examples. The server caches solutions on disk keyed by SHA-256 of the maze bytes; an integration test confirms the search algorithm runs exactly once across two identical requests.
+
+---
+
 ## Tech stack
 
 | Layer | Choice |
