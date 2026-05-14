@@ -13,7 +13,7 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.Cursor;
-import javafx.scene.canvas.Canvas;
+import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
@@ -33,10 +33,11 @@ import mazealgo.viewmodel.MovementDirection;
  *
  * <p>Input handling lives here:
  * <ul>
- *   <li>2D/3D toggle → switches displayers, shows/hides the Depth spinner</li>
+ *   <li>2D/3D toggle → switches displayers, shows/hides the Depth + Focus controls</li>
  *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions (2D only)</li>
  *   <li>Scroll wheel anywhere on the canvas → zoom in/out</li>
- *   <li>Primary-button drag on the canvas → pan; right-click recenters</li>
+ *   <li>Primary-button drag on the canvas → pan in 2D / rotate the cube in 3D; right-click recenters</li>
+ *   <li>Focus combo (3D only) → isolate one layer; the rest are hidden</li>
  *   <li>Generate → new 2D maze, or new 3D maze when in 3D mode</li>
  *   <li>Algorithm ComboBox → BFS / DFS / Best-First; affects both Hint and Watch</li>
  *   <li>Solution Hint → solves and draws the path</li>
@@ -81,13 +82,15 @@ public class MazeViewController {
     @FXML private BorderPane root;
     @FXML private StackPane mazeContainer;
     @FXML private Pane maze2DContainer;
-    @FXML private Pane maze3DContainer;
+    @FXML private StackPane maze3DContainer;
     @FXML private MazeDisplayer mazeDisplayer;
     @FXML private Maze3DDisplayer maze3DDisplayer;
     @FXML private Spinner<Integer> rowsSpinner;
     @FXML private Spinner<Integer> colsSpinner;
     @FXML private Spinner<Integer> depthSpinner;
     @FXML private Label depthLabel;
+    @FXML private Label focusLayerLabel;
+    @FXML private ComboBox<String> focusLayerCombo;
     @FXML private Button generateButton;
     @FXML private Button hintButton;
     @FXML private Button watchButton;
@@ -99,13 +102,15 @@ public class MazeViewController {
     @FXML private ToggleButton mode3DButton;
     @FXML private ComboBox<String> algorithmCombo;
 
+    private static final String FOCUS_ALL_LABEL = "All layers";
+
     @FXML
     private void initialize() {
-        // Canvas resize bindings — each displayer fills its own Pane.
+        // 2D Canvas resize binding — its own Pane sizes it.
         mazeDisplayer.widthProperty().bind(maze2DContainer.widthProperty());
         mazeDisplayer.heightProperty().bind(maze2DContainer.heightProperty());
-        maze3DDisplayer.widthProperty().bind(maze3DContainer.widthProperty());
-        maze3DDisplayer.heightProperty().bind(maze3DContainer.heightProperty());
+        // 3D displayer is a Pane (with a SubScene inside), sized by its
+        // StackPane parent automatically — no explicit bind.
 
         // Spinner factories.
         rowsSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 200, 20));
@@ -145,6 +150,21 @@ public class MazeViewController {
         algorithmCombo.setItems(FXCollections.observableArrayList(
                 MazeViewModel.ALGO_BEST_FIRST, MazeViewModel.ALGO_BFS, MazeViewModel.ALGO_DFS));
         algorithmCombo.valueProperty().bindBidirectional(viewModel.algorithmChoiceProperty());
+
+        // Layer-focus combo (3D only). Starts in the "All layers" state with
+        // a depth-aware item list rebuilt on Generate.
+        rebuildFocusCombo(depthSpinner.getValue());
+        focusLayerCombo.valueProperty().addListener((obs, ov, nv) -> {
+            if (nv == null || FOCUS_ALL_LABEL.equals(nv)) {
+                maze3DDisplayer.focusedLayerProperty().set(-1);
+            } else if (nv.startsWith("Layer ")) {
+                try {
+                    maze3DDisplayer.focusedLayerProperty().set(Integer.parseInt(nv.substring(6)));
+                } catch (NumberFormatException ignored) {
+                    maze3DDisplayer.focusedLayerProperty().set(-1);
+                }
+            }
+        });
 
         // Labels.
         zoomLabel.textProperty().bind(Bindings.format("Zoom %.0f%%",
@@ -201,9 +221,21 @@ public class MazeViewController {
         depthSpinner.setVisible(threeD);
         depthLabel.setManaged(threeD);
         depthSpinner.setManaged(threeD);
+        focusLayerLabel.setVisible(threeD);
+        focusLayerCombo.setVisible(threeD);
+        focusLayerLabel.setManaged(threeD);
+        focusLayerCombo.setManaged(threeD);
         statusLabel.setText(threeD
-                ? "3D mode — Generate makes a Maze3D; player movement is disabled. Use Hint / Watch."
+                ? "3D mode — drag to rotate, scroll to zoom, Focus isolates a single layer. Generate, then Hint or Watch."
                 : "Hit Generate to make a maze, WASD/Arrows to move, scroll to zoom, click-drag to pan (right-click recenters).");
+    }
+
+    private void rebuildFocusCombo(int depth) {
+        var items = FXCollections.<String>observableArrayList();
+        items.add(FOCUS_ALL_LABEL);
+        for (int i = 0; i < depth; i++) items.add("Layer " + i);
+        focusLayerCombo.setItems(items);
+        focusLayerCombo.setValue(FOCUS_ALL_LABEL);
     }
 
     @FXML
@@ -219,7 +251,8 @@ public class MazeViewController {
         if (viewModel.modeProperty().get() == MazeViewModel.Mode.THREE_D) {
             int depth = depthSpinner.getValue();
             viewModel.generate3D(depth, rows, cols);
-            statusLabel.setText(String.format("Generated 3D %d×%d×%d (depth×rows×cols).",
+            rebuildFocusCombo(depth);
+            statusLabel.setText(String.format("Generated 3D %d×%d×%d (depth×rows×cols). Drag to rotate.",
                     depth, rows, cols));
         } else {
             viewModel.generate(rows, cols);
@@ -256,13 +289,15 @@ public class MazeViewController {
     }
 
     /**
-     * Wire mouse press/drag/release on the given canvas so a primary-button
-     * drag pans the rendered maze. Right-click resets the pan to centered.
+     * Wire mouse press/drag/release on the given node so a primary-button
+     * drag updates panX/panY by the scene-space delta. The 2D displayer
+     * interprets these as pan offsets; the 3D displayer reinterprets them
+     * as yaw/pitch drag accumulators. Right-click resets both to zero.
      */
-    private void installPanHandlers(Canvas canvas,
+    private void installPanHandlers(Node node,
                                     javafx.beans.property.DoubleProperty panX,
                                     javafx.beans.property.DoubleProperty panY) {
-        canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> {
+        node.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> {
             if (e.getButton() == MouseButton.SECONDARY) {
                 // Right-click recentres — quick escape if the user drags too far.
                 panX.set(0);
@@ -276,24 +311,24 @@ public class MazeViewController {
             panStartX = panX.get();
             panStartY = panY.get();
             panning = true;
-            canvas.setCursor(Cursor.CLOSED_HAND);
+            node.setCursor(Cursor.CLOSED_HAND);
             e.consume();
         });
-        canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, e -> {
+        node.addEventHandler(MouseEvent.MOUSE_DRAGGED, e -> {
             if (!panning) return;
             panX.set(panStartX + (e.getSceneX() - dragStartX));
             panY.set(panStartY + (e.getSceneY() - dragStartY));
             e.consume();
         });
-        canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> {
+        node.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> {
             if (!panning) return;
             panning = false;
-            canvas.setCursor(Cursor.OPEN_HAND);
+            node.setCursor(Cursor.OPEN_HAND);
             // Movement keys (WASD/arrows) need root focus — restore it.
             root.requestFocus();
             e.consume();
         });
-        canvas.setCursor(Cursor.OPEN_HAND);
+        node.setCursor(Cursor.OPEN_HAND);
     }
 
     private void onScroll(ScrollEvent e) {

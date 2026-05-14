@@ -45,6 +45,8 @@
                 <Spinner fx:id="colsSpinner" prefWidth="78.0" editable="true"/>
                 <Label fx:id="depthLabel" text="Depth:"/>
                 <Spinner fx:id="depthSpinner" prefWidth="78.0" editable="true"/>
+                <Label fx:id="focusLayerLabel" text="Focus:"/>
+                <ComboBox fx:id="focusLayerCombo" prefWidth="110.0"/>
 
                 <Button fx:id="generateButton" text="Generate" onAction="#onGenerate"
                         styleClass="primary-button"/>
@@ -75,9 +77,9 @@
             <Pane fx:id="maze2DContainer">
                 <MazeDisplayer fx:id="mazeDisplayer"/>
             </Pane>
-            <Pane fx:id="maze3DContainer" visible="false">
+            <StackPane fx:id="maze3DContainer" visible="false">
                 <Maze3DDisplayer fx:id="maze3DDisplayer"/>
-            </Pane>
+            </StackPane>
         </StackPane>
     </center>
 
