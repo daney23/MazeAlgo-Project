@@ -17,7 +17,7 @@ This started as a university assignment and is being built out into a portfolio-
 ## TL;DR
 
 - **What it is.** A maze engine — generates 2D/3D mazes, solves them with BFS / DFS / Best-First (A* with admissible heuristics), and serves both operations over sockets.
-- **Status.** All four phases done. `mvn clean test` → BUILD SUCCESS, 42 / 42 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with WASD or arrow keys, zoom with `Ctrl + scroll`, click-drag to pan (right-click recenters), click **Solution Hint** to draw the optimal path, click **Watch Search** to see Best-First explore cells in real time, and a sound effect plays when you reach the goal. `mvn javadoc:javadoc` generates the full API docs.
+- **Status.** All four phases done. `mvn clean test` → BUILD SUCCESS, 42 / 42 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with WASD or arrow keys, zoom with the scroll wheel, click-drag to pan (right-click recenters), click **Solution Hint** to draw the optimal path, click **Watch Search** to see Best-First explore cells in real time, and a sound effect plays when you reach the goal. `mvn javadoc:javadoc` generates the full API docs.
 - **For the technically curious.** Adapter, Strategy, Decorator, and Template Method patterns all appear here in real load-bearing roles — not as toy examples. The server caches solutions on disk keyed by SHA-256 of the maze bytes; an integration test confirms the search algorithm runs exactly once across two identical requests.
 
 ---

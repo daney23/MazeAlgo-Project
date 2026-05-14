@@ -35,7 +35,7 @@ import mazealgo.viewmodel.MovementDirection;
  * <ul>
  *   <li>2D/3D toggle → switches displayers, shows/hides the Depth spinner</li>
  *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions (2D only)</li>
- *   <li>Ctrl + scroll wheel anywhere on the canvas → zoom in/out</li>
+ *   <li>Scroll wheel anywhere on the canvas → zoom in/out</li>
  *   <li>Primary-button drag on the canvas → pan; right-click recenters</li>
  *   <li>Generate → new 2D maze, or new 3D maze when in 3D mode</li>
  *   <li>Algorithm ComboBox → BFS / DFS / Best-First; affects both Hint and Watch</li>
@@ -203,7 +203,7 @@ public class MazeViewController {
         depthSpinner.setManaged(threeD);
         statusLabel.setText(threeD
                 ? "3D mode — Generate makes a Maze3D; player movement is disabled. Use Hint / Watch."
-                : "Hit Generate to make a maze, WASD/Arrows to move, Ctrl+scroll to zoom, click-drag to pan (right-click recenters).");
+                : "Hit Generate to make a maze, WASD/Arrows to move, scroll to zoom, click-drag to pan (right-click recenters).");
     }
 
     @FXML
@@ -297,7 +297,6 @@ public class MazeViewController {
     }
 
     private void onScroll(ScrollEvent e) {
-        if (!e.isControlDown()) return;
         // Zoom whichever displayer is active.
         boolean threeD = viewModel.modeProperty().get() == MazeViewModel.Mode.THREE_D;
         double current = threeD ? maze3DDisplayer.zoomProperty().get() : mazeDisplayer.zoomProperty().get();
