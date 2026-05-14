@@ -47,12 +47,16 @@ public class Maze3DDisplayer extends Canvas {
     private final ObjectProperty<Maze3D> maze3D = new SimpleObjectProperty<>();
     private final ObjectProperty<Solution> solution = new SimpleObjectProperty<>();
     private final DoubleProperty zoom = new SimpleDoubleProperty(1.0);
+    private final DoubleProperty panX = new SimpleDoubleProperty(0);
+    private final DoubleProperty panY = new SimpleDoubleProperty(0);
     private final ObservableSet<AState> visitedCells = FXCollections.observableSet(new HashSet<>());
 
     public Maze3DDisplayer() {
         maze3D.addListener((o, ov, nv) -> redraw());
         solution.addListener((o, ov, nv) -> redraw());
         zoom.addListener((o, ov, nv) -> redraw());
+        panX.addListener((o, ov, nv) -> redraw());
+        panY.addListener((o, ov, nv) -> redraw());
         visitedCells.addListener((SetChangeListener<AState>) c -> redraw());
         widthProperty().addListener((o, ov, nv) -> redraw());
         heightProperty().addListener((o, ov, nv) -> redraw());
@@ -76,8 +80,8 @@ public class Maze3DDisplayer extends Canvas {
         double gapPx = cellSize * LAYER_GAP_FRACTION;
         double totalStripWidth = m.getDepth() * layerWidth + (m.getDepth() - 1) * gapPx;
         double totalStripHeight = layerHeight + LABEL_HEIGHT_PX;
-        double xOff = (getWidth() - totalStripWidth) / 2;
-        double yOff = (getHeight() - totalStripHeight) / 2 + LABEL_HEIGHT_PX;
+        double xOff = (getWidth() - totalStripWidth) / 2 + panX.get();
+        double yOff = (getHeight() - totalStripHeight) / 2 + LABEL_HEIGHT_PX + panY.get();
 
         gc.setFont(Font.font(13));
         gc.setTextAlign(TextAlignment.CENTER);
@@ -223,5 +227,13 @@ public class Maze3DDisplayer extends Canvas {
     public ObjectProperty<Maze3D> maze3DProperty() { return maze3D; }
     public ObjectProperty<Solution> solutionProperty() { return solution; }
     public DoubleProperty zoomProperty() { return zoom; }
+    public DoubleProperty panXProperty() { return panX; }
+    public DoubleProperty panYProperty() { return panY; }
     public ObservableSet<AState> getVisitedCells() { return visitedCells; }
+
+    /** Reset pan so the next-rendered maze sits centered. */
+    public void resetPan() {
+        panX.set(0);
+        panY.set(0);
+    }
 }

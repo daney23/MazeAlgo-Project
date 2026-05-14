@@ -56,6 +56,8 @@ public class MazeDisplayer extends Canvas {
     private final IntegerProperty playerRow = new SimpleIntegerProperty(0);
     private final IntegerProperty playerColumn = new SimpleIntegerProperty(0);
     private final DoubleProperty zoom = new SimpleDoubleProperty(1.0);
+    private final DoubleProperty panX = new SimpleDoubleProperty(0);
+    private final DoubleProperty panY = new SimpleDoubleProperty(0);
     private final ObjectProperty<Solution> solution = new SimpleObjectProperty<>();
     private final ObservableSet<AState> visitedCells = FXCollections.observableSet(new HashSet<>());
 
@@ -71,6 +73,8 @@ public class MazeDisplayer extends Canvas {
         playerRow.addListener((o, oldV, newV) -> redraw());
         playerColumn.addListener((o, oldV, newV) -> redraw());
         zoom.addListener((o, oldV, newV) -> redraw());
+        panX.addListener((o, oldV, newV) -> redraw());
+        panY.addListener((o, oldV, newV) -> redraw());
         solution.addListener((o, oldV, newV) -> redraw());
         visitedCells.addListener((javafx.collections.SetChangeListener<AState>) c -> redraw());
         widthProperty().addListener((o, oldV, newV) -> redraw());
@@ -102,8 +106,8 @@ public class MazeDisplayer extends Canvas {
         double cellSize = computeCellSize(m);
         double drawWidth = cellSize * m.getColumns();
         double drawHeight = cellSize * m.getRows();
-        double xOff = (getWidth() - drawWidth) / 2;
-        double yOff = (getHeight() - drawHeight) / 2;
+        double xOff = (getWidth() - drawWidth) / 2 + panX.get();
+        double yOff = (getHeight() - drawHeight) / 2 + panY.get();
 
         // Floor background — one rect avoids per-cell fills.
         gc.setFill(FLOOR_COLOR);
@@ -241,6 +245,14 @@ public class MazeDisplayer extends Canvas {
     public IntegerProperty playerRowProperty() { return playerRow; }
     public IntegerProperty playerColumnProperty() { return playerColumn; }
     public DoubleProperty zoomProperty() { return zoom; }
+    public DoubleProperty panXProperty() { return panX; }
+    public DoubleProperty panYProperty() { return panY; }
     public ObjectProperty<Solution> solutionProperty() { return solution; }
     public ObservableSet<AState> getVisitedCells() { return visitedCells; }
+
+    /** Reset pan so the next-rendered maze sits centered. */
+    public void resetPan() {
+        panX.set(0);
+        panY.set(0);
+    }
 }

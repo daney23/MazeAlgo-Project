@@ -12,8 +12,12 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.Cursor;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -32,6 +36,7 @@ import mazealgo.viewmodel.MovementDirection;
  *   <li>2D/3D toggle → switches displayers, shows/hides the Depth spinner</li>
  *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions (2D only)</li>
  *   <li>Ctrl + scroll wheel anywhere on the canvas → zoom in/out</li>
+ *   <li>Primary-button drag on the canvas → pan; right-click recenters</li>
  *   <li>Generate → new 2D maze, or new 3D maze when in 3D mode</li>
  *   <li>Algorithm ComboBox → BFS / DFS / Best-First; affects both Hint and Watch</li>
  *   <li>Solution Hint → solves and draws the path</li>
@@ -50,6 +55,15 @@ public class MazeViewController {
 
     private final MazeViewModel viewModel;
     private final SoundPlayer soundPlayer = new SoundPlayer();
+
+    // Drag-to-pan: where the mouse was pressed (scene coords) and the pan
+    // offset at that moment, so dragging is a pure delta against the
+    // initial press — no accumulated rounding error from per-event deltas.
+    private double dragStartX;
+    private double dragStartY;
+    private double panStartX;
+    private double panStartY;
+    private boolean panning;
 
     /** Default ctor — used when FXMLLoader has no controller factory. In-process model. */
     public MazeViewController() {
@@ -162,6 +176,13 @@ public class MazeViewController {
             }
         });
 
+        // Drag-to-pan on either displayer. Wired on the canvases (not the
+        // root) so dragging on the toolbar doesn't move the maze.
+        installPanHandlers(mazeDisplayer,
+                mazeDisplayer.panXProperty(), mazeDisplayer.panYProperty());
+        installPanHandlers(maze3DDisplayer,
+                maze3DDisplayer.panXProperty(), maze3DDisplayer.panYProperty());
+
         soundPlayer.playBackground();
     }
 
@@ -182,7 +203,7 @@ public class MazeViewController {
         depthSpinner.setManaged(threeD);
         statusLabel.setText(threeD
                 ? "3D mode — Generate makes a Maze3D; player movement is disabled. Use Hint / Watch."
-                : "Hit Generate to make a maze, then WASD or Arrow keys to move. Ctrl + scroll to zoom.");
+                : "Hit Generate to make a maze, WASD/Arrows to move, Ctrl+scroll to zoom, click-drag to pan (right-click recenters).");
     }
 
     @FXML
@@ -191,6 +212,10 @@ public class MazeViewController {
         int cols = colsSpinner.getValue();
         mazeDisplayer.getVisitedCells().clear();
         maze3DDisplayer.getVisitedCells().clear();
+        // Center the new maze — old pan offset would put it off-screen if the
+        // previous drag was aggressive or the previous maze was much bigger.
+        mazeDisplayer.resetPan();
+        maze3DDisplayer.resetPan();
         if (viewModel.modeProperty().get() == MazeViewModel.Mode.THREE_D) {
             int depth = depthSpinner.getValue();
             viewModel.generate3D(depth, rows, cols);
@@ -228,6 +253,47 @@ public class MazeViewController {
             viewModel.movePlayer(dir);
             e.consume();
         }
+    }
+
+    /**
+     * Wire mouse press/drag/release on the given canvas so a primary-button
+     * drag pans the rendered maze. Right-click resets the pan to centered.
+     */
+    private void installPanHandlers(Canvas canvas,
+                                    javafx.beans.property.DoubleProperty panX,
+                                    javafx.beans.property.DoubleProperty panY) {
+        canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> {
+            if (e.getButton() == MouseButton.SECONDARY) {
+                // Right-click recentres — quick escape if the user drags too far.
+                panX.set(0);
+                panY.set(0);
+                e.consume();
+                return;
+            }
+            if (e.getButton() != MouseButton.PRIMARY) return;
+            dragStartX = e.getSceneX();
+            dragStartY = e.getSceneY();
+            panStartX = panX.get();
+            panStartY = panY.get();
+            panning = true;
+            canvas.setCursor(Cursor.CLOSED_HAND);
+            e.consume();
+        });
+        canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, e -> {
+            if (!panning) return;
+            panX.set(panStartX + (e.getSceneX() - dragStartX));
+            panY.set(panStartY + (e.getSceneY() - dragStartY));
+            e.consume();
+        });
+        canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> {
+            if (!panning) return;
+            panning = false;
+            canvas.setCursor(Cursor.OPEN_HAND);
+            // Movement keys (WASD/arrows) need root focus — restore it.
+            root.requestFocus();
+            e.consume();
+        });
+        canvas.setCursor(Cursor.OPEN_HAND);
     }
 
     private void onScroll(ScrollEvent e) {
