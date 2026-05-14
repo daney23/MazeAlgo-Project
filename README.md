@@ -9,7 +9,7 @@ This started as a university assignment and is being built out into a portfolio-
 ## TL;DR
 
 - **What it is.** A maze engine — generates 2D/3D mazes, solves them with BFS / DFS / Best-First (A* with admissible heuristics), and serves both operations over sockets.
-- **Status.** Phases 1–2 of 4 done. `mvn clean test` → BUILD SUCCESS, 26 / 26 tests pass. JavaFX UI is Phase 3, in progress.
+- **Status.** Phases 1–3 of 4 done. `mvn clean test` → BUILD SUCCESS, 36 / 36 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with NumPad 1–9 (diagonals included), zoom with `Ctrl + scroll`, and a synthesized arpeggio plays when you reach the goal.
 - **For the technically curious.** Adapter, Strategy, Decorator, and Template Method patterns all appear here in real load-bearing roles — not as toy examples. The server caches solutions on disk keyed by SHA-256 of the maze bytes; an integration test confirms the search algorithm runs exactly once across two identical requests.
 
 ---
@@ -20,9 +20,9 @@ This started as a university assignment and is being built out into a portfolio-
 |---|---|
 | Language | Java 17 (compiled with `--release 17`, runs on JDK 17+) |
 | Build | Maven 3.9 |
-| UI _(in progress)_ | JavaFX 17.0.11 — controls, fxml, media |
+| UI | JavaFX 17.0.11 — controls, fxml, media |
 | Logging | Log4j2 |
-| Tests | JUnit Jupiter 5.8.1 (26 tests, all passing) |
+| Tests | JUnit Jupiter 5.8.1 (36 tests, all passing) |
 
 ---
 
@@ -35,7 +35,9 @@ This started as a university assignment and is being built out into a portfolio-
 - **Multi-threaded socket server** with an `ExecutorService` thread pool and a `setSoTimeout`-driven accept loop, so `stop()` is responsive even when no clients are connecting.
 - **Smart caching.** Identical solve requests don't re-run the algorithm — `SolutionCache` keys solutions by SHA-256 of the maze bytes and stores them on disk under `$TMPDIR/MazeAlgo/cache/`. An integration test verifies that two identical requests invoke the search algorithm exactly once.
 - **Streaming run-length encoding** via the `MyCompressorOutputStream` Decorator — a 10,000-byte sparse maze grid lands in well under 1 KB on the wire (>10× compression, asserted in the test suite).
-- **26 tests, all passing**, including a full end-to-end test that spins up `MyServer` on an OS-assigned port and verifies both strategies via real sockets.
+- **MVVM data binding all the way down.** The custom `MazeDisplayer` `Canvas` binds to `MazeViewModel` properties (`maze`, `playerRow`, `playerColumn`, `zoom`) — moving the player updates the model, the view re-paints automatically, no manual `repaint()` plumbing.
+- **Synthesized victory chime.** No third-party audio assets needed — a C–E–G–C arpeggio is generated in code with `javax.sound.sampled` (with linear fade envelopes to avoid clicks). Drop a real `.mp3` / `.wav` into `src/main/resources/mazealgo/view/sounds/` to override.
+- **36 tests, all passing**, including a full end-to-end test that spins up `MyServer` on an OS-assigned port and verifies both strategies via real sockets, plus 10 ViewModel tests covering movement rules, the diagonal-pinhole edge case, victory detection, and bounds.
 
 ---
 
@@ -43,8 +45,9 @@ This started as a university assignment and is being built out into a portfolio-
 
 ```
                            ┌──────────────────────────────────┐
-                           │   View  (JavaFX, in progress)    │
+                           │   View  (JavaFX)                 │
                            │   MazeView.fxml + Controller     │
+                           │   MazeDisplayer Canvas           │
                            └────────────────┬─────────────────┘
                                             │ binds to JavaFX properties
                            ┌────────────────▼─────────────────┐
@@ -192,7 +195,7 @@ src/test/java/...                            26 tests across compression, byte s
 
 - [x] **Phase 1** — Maven migration, MVVM scaffolding, Serializable refactor for the upcoming wire protocol, base + reset hook on `ASearchingAlgorithm` (fixes a real bug: early goal-find used to leave stale states in the BFS open list and corrupt the next reuse).
 - [x] **Phase 2** — Multi-threaded server, Decorator-pattern compression, content-addressed solution cache.
-- [ ] **Phase 3** — JavaFX GUI: custom `MazeDisplayer` canvas with wall / player / goal sprites, NumPad-driven movement (including diagonals from `SearchableMaze`), `Ctrl + scroll` zoom, background music and a victory chime.
+- [x] **Phase 3** — JavaFX GUI: custom `MazeDisplayer` canvas (sprite-capable, falls back to drawn shapes so it works without assets), NumPad 1–9 movement including diagonals with the same pinhole rule as `SearchableMaze`, `Ctrl + scroll` zoom, synthesized victory chime via `javax.sound.sampled`. Background music slot in place — drop an mp3 in `src/main/resources/mazealgo/view/sounds/` to activate.
 - [ ] **Phase 4** — Algorithm visualizer: animated drawing of the solution path, a live `numberOfNodesEvaluated` counter, and a "watch the search happen" mode that colours cells as they enter the visited set. Full Javadoc generation.
 
 ---

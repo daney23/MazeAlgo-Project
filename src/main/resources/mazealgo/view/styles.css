@@ -1,0 +1,54 @@
+.root-pane {
+    -fx-background-color: #ffffff;
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.control-bar {
+    -fx-background-color: #34495e;
+    -fx-text-fill: #ecf0f1;
+}
+
+.control-bar .label {
+    -fx-text-fill: #ecf0f1;
+    -fx-font-size: 13px;
+}
+
+.control-bar .spinner {
+    -fx-pref-height: 28px;
+}
+
+.primary-button {
+    -fx-background-color: #2980b9;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6px 14px;
+    -fx-background-radius: 4px;
+}
+
+.primary-button:hover {
+    -fx-background-color: #3498db;
+}
+
+.primary-button:pressed {
+    -fx-background-color: #21618c;
+}
+
+.maze-container {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 0 0 1 0;
+}
+
+.status-bar {
+    -fx-background-color: #ecf0f1;
+}
+
+.status-bar .label {
+    -fx-text-fill: #2c3e50;
+    -fx-font-size: 12px;
+}
+
+.victory-label {
+    -fx-text-fill: #27ae60;
+    -fx-font-weight: bold;
+}
