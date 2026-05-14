@@ -6,20 +6,29 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableSet;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import mazealgo.model.algorithms.mazeGenerators.Maze;
 import mazealgo.model.algorithms.mazeGenerators.Position;
+import mazealgo.model.algorithms.search.AState;
+import mazealgo.model.algorithms.search.MazeState;
+import mazealgo.model.algorithms.search.Solution;
 
 import java.net.URL;
+import java.util.HashSet;
 
 /**
  * A resizable JavaFX {@link Canvas} that renders a {@link Maze}, the
- * player, and the goal. Exposes JavaFX properties for everything that
- * changes at runtime so the controller can bind it to the ViewModel —
- * setting any property triggers a redraw.
+ * player, the goal, an optional {@link Solution} overlay, and an
+ * optional set of visited cells for the search visualizer.
+ *
+ * <p>Exposes JavaFX properties for everything that changes at runtime
+ * so the controller can bind it to the ViewModel — setting any property
+ * triggers a redraw.
  *
  * <p>Sprite handling: if {@code /mazealgo/view/images/wall.png},
  * {@code /player.png} and {@code /goal.png} are on the classpath
@@ -28,9 +37,9 @@ import java.net.URL;
  * fallback ships with the repo so the UI works out of the box without
  * sourcing third-party assets.
  *
- * <p>Zoom is a multiplicative factor; the actual cell size also
- * depends on the canvas dimensions. The displayer always preserves
- * the maze's aspect ratio and centers the drawing on the canvas.
+ * <p>Layer order (back to front): floor, walls, grid lines, visited
+ * overlay, solution path, goal sprite, player sprite. The visited
+ * overlay sits under the solution so the solution always reads on top.
  */
 public class MazeDisplayer extends Canvas {
     private static final Color FLOOR_COLOR = Color.web("#ecf0f1");
@@ -40,11 +49,15 @@ public class MazeDisplayer extends Canvas {
     private static final Color PLAYER_OUTLINE = Color.web("#ffffff");
     private static final Color GOAL_COLOR = Color.web("#27ae60");
     private static final Color GOAL_OUTLINE = Color.web("#145a32");
+    private static final Color VISITED_COLOR = Color.web("#f1c40f", 0.35);   // translucent yellow
+    private static final Color SOLUTION_COLOR = Color.web("#e67e22");        // orange
 
     private final ObjectProperty<Maze> maze = new SimpleObjectProperty<>();
     private final IntegerProperty playerRow = new SimpleIntegerProperty(0);
     private final IntegerProperty playerColumn = new SimpleIntegerProperty(0);
     private final DoubleProperty zoom = new SimpleDoubleProperty(1.0);
+    private final ObjectProperty<Solution> solution = new SimpleObjectProperty<>();
+    private final ObservableSet<AState> visitedCells = FXCollections.observableSet(new HashSet<>());
 
     private Image wallImage;
     private Image playerImage;
@@ -58,6 +71,8 @@ public class MazeDisplayer extends Canvas {
         playerRow.addListener((o, oldV, newV) -> redraw());
         playerColumn.addListener((o, oldV, newV) -> redraw());
         zoom.addListener((o, oldV, newV) -> redraw());
+        solution.addListener((o, oldV, newV) -> redraw());
+        visitedCells.addListener((javafx.collections.SetChangeListener<AState>) c -> redraw());
         widthProperty().addListener((o, oldV, newV) -> redraw());
         heightProperty().addListener((o, oldV, newV) -> redraw());
     }
@@ -117,6 +132,8 @@ public class MazeDisplayer extends Canvas {
             }
         }
 
+        drawVisited(gc, cellSize, xOff, yOff);
+        drawSolution(gc, cellSize, xOff, yOff);
         drawGoal(gc, m.getGoalPosition(), cellSize, xOff, yOff);
         drawPlayer(gc, playerRow.get(), playerColumn.get(), cellSize, xOff, yOff);
     }
@@ -135,6 +152,44 @@ public class MazeDisplayer extends Canvas {
         } else {
             gc.setFill(WALL_COLOR);
             gc.fillRect(x, y, cellSize, cellSize);
+        }
+    }
+
+    private void drawVisited(GraphicsContext gc, double cellSize, double xOff, double yOff) {
+        if (visitedCells.isEmpty()) return;
+        gc.setFill(VISITED_COLOR);
+        for (AState state : visitedCells) {
+            if (state instanceof MazeState m) {
+                gc.fillRect(xOff + m.getColumn() * cellSize, yOff + m.getRow() * cellSize, cellSize, cellSize);
+            }
+        }
+    }
+
+    private void drawSolution(GraphicsContext gc, double cellSize, double xOff, double yOff) {
+        Solution sol = solution.get();
+        if (sol == null) return;
+        var path = sol.getSolutionPath();
+        if (path == null || path.isEmpty()) return;
+
+        // Draw connecting line through cell centers + a dot per state so the
+        // path reads at any zoom level.
+        gc.setStroke(SOLUTION_COLOR);
+        gc.setLineWidth(Math.max(2, cellSize * 0.18));
+        for (int i = 1; i < path.size(); i++) {
+            if (!(path.get(i - 1) instanceof MazeState a) || !(path.get(i) instanceof MazeState b)) continue;
+            double x1 = xOff + a.getColumn() * cellSize + cellSize / 2;
+            double y1 = yOff + a.getRow() * cellSize + cellSize / 2;
+            double x2 = xOff + b.getColumn() * cellSize + cellSize / 2;
+            double y2 = yOff + b.getRow() * cellSize + cellSize / 2;
+            gc.strokeLine(x1, y1, x2, y2);
+        }
+        double dot = Math.max(3, cellSize * 0.22);
+        gc.setFill(SOLUTION_COLOR);
+        for (AState s : path) {
+            if (!(s instanceof MazeState ms)) continue;
+            double cx = xOff + ms.getColumn() * cellSize + cellSize / 2;
+            double cy = yOff + ms.getRow() * cellSize + cellSize / 2;
+            gc.fillOval(cx - dot / 2, cy - dot / 2, dot, dot);
         }
     }
 
@@ -186,4 +241,6 @@ public class MazeDisplayer extends Canvas {
     public IntegerProperty playerRowProperty() { return playerRow; }
     public IntegerProperty playerColumnProperty() { return playerColumn; }
     public DoubleProperty zoomProperty() { return zoom; }
+    public ObjectProperty<Solution> solutionProperty() { return solution; }
+    public ObservableSet<AState> getVisitedCells() { return visitedCells; }
 }

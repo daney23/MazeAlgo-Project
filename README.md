@@ -16,7 +16,7 @@ This started as a university assignment and is being built out into a portfolio-
 ## TL;DR
 
 - **What it is.** A maze engine — generates 2D/3D mazes, solves them with BFS / DFS / Best-First (A* with admissible heuristics), and serves both operations over sockets.
-- **Status.** Phases 1–3 of 4 done. `mvn clean test` → BUILD SUCCESS, 36 / 36 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with WASD or the arrow keys, zoom with `Ctrl + scroll`, and a sound effect plays when you reach the goal.
+- **Status.** All four phases done. `mvn clean test` → BUILD SUCCESS, 42 / 42 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with WASD or arrow keys, zoom with `Ctrl + scroll`, click **Solution Hint** to draw the optimal path, click **Watch Search** to see Best-First explore cells in real time, and a sound effect plays when you reach the goal. `mvn javadoc:javadoc` generates the full API docs.
 - **For the technically curious.** Adapter, Strategy, Decorator, and Template Method patterns all appear here in real load-bearing roles — not as toy examples. The server caches solutions on disk keyed by SHA-256 of the maze bytes; an integration test confirms the search algorithm runs exactly once across two identical requests.
 
 ---
@@ -29,7 +29,7 @@ This started as a university assignment and is being built out into a portfolio-
 | Build | Maven 3.9 |
 | UI | JavaFX 17.0.11 — controls, fxml, media |
 | Logging | Log4j2 |
-| Tests | JUnit Jupiter 5.8.1 (36 tests, all passing) |
+| Tests | JUnit Jupiter 5.8.1 (42 tests, all passing) |
 
 ---
 
@@ -44,7 +44,7 @@ This started as a university assignment and is being built out into a portfolio-
 - **Streaming run-length encoding** via the `MyCompressorOutputStream` Decorator — a 10,000-byte sparse maze grid lands in well under 1 KB on the wire (>10× compression, asserted in the test suite).
 - **MVVM data binding all the way down.** The custom `MazeDisplayer` `Canvas` binds to `MazeViewModel` properties (`maze`, `playerRow`, `playerColumn`, `zoom`) — moving the player updates the model, the view re-paints automatically, no manual `repaint()` plumbing.
 - **Synthesized victory chime.** No third-party audio assets needed — a C–E–G–C arpeggio is generated in code with `javax.sound.sampled` (with linear fade envelopes to avoid clicks). Drop a real `.mp3` / `.wav` into `src/main/resources/mazealgo/view/sounds/` to override.
-- **36 tests, all passing**, including a full end-to-end test that spins up `MyServer` on an OS-assigned port and verifies both strategies via real sockets, plus 10 ViewModel tests covering movement rules, the diagonal-pinhole edge case, victory detection, and bounds.
+- **42 tests, all passing**, including a full end-to-end test that spins up `MyServer` on an OS-assigned port and verifies both strategies via real sockets, 10 ViewModel tests covering movement rules and the diagonal-pinhole edge case, and 6 listener-contract tests that pin the per-node observer hook used by the UI's "Watch Search" visualizer.
 
 ---
 
@@ -80,14 +80,15 @@ The Server layer reuses the same `MyMazeGenerator` and `BestFirstSearch` the in-
 
 ## Design patterns at a glance
 
-| Pattern | Where | Why |
+| Pattern | Where | Why it's here |
 |---|---|---|
-| **Strategy** | `IServerStrategy` (`GenerateMazeStrategy`, `SolveMazeStrategy`) | One pluggable behaviour per server endpoint. Adding a new endpoint = one new class. |
-| **Strategy** | `ISearchingAlgorithm` (`BreadthFirstSearch`, `DepthFirstSearch`, `BestFirstSearch`) | Swappable searchers, identical contract: `solve(ISearchable) → Solution`. |
-| **Adapter** | `SearchableMaze`, `SearchableMaze3D` | Expose 2D / 3D mazes as a unified `ISearchable` so searchers don't know dimensionality. |
-| **Decorator** | `MyCompressorOutputStream`, `MyDecompressorInputStream` | Wrap any `OutputStream` / `InputStream` to add RLE compression transparently. |
-| **Template Method** | `ASearchingAlgorithm`, `AMazeGenerator`, `AMaze3DGenerator` | Shared concerns (counter reset, timing) live in the base; subclasses implement the variable bits. |
-| **Factory (Supplier)** | `SolveMazeStrategy(cache, searcherFactory)` | A fresh searcher per request — avoids leaking state across pooled solves. |
+| **Adapter** | `SearchableMaze`, `SearchableMaze3D` | The search algorithms speak `ISearchable`, not `Maze`. The adapters expose a 2D `Maze` (8 neighbours, diagonals with the pinhole rule) and a 3D `Maze3D` (6 neighbours, no diagonals) under the same interface, so one `BestFirstSearch` solves both dimensionalities with zero changes. |
+| **Strategy** | `ISearchingAlgorithm` (`BreadthFirstSearch`, `DepthFirstSearch`, `BestFirstSearch`) | Swappable searchers behind a uniform `solve(ISearchable) → Solution` contract. Adding a new algorithm doesn't touch any caller — the `MazeViewModel`, the `SolveMazeStrategy`, the `SolutionCache` all keep working. |
+| **Strategy** | `IServerStrategy` (`GenerateMazeStrategy`, `SolveMazeStrategy`) | One pluggable behaviour per server endpoint. `MyServer` doesn't know what the strategy does; it just dispatches sockets to it. Adding a new endpoint = one new class implementing `serverStrategy(in, out)`. |
+| **Decorator** | `MyCompressorOutputStream` / `MyDecompressorInputStream` | Wrap any `OutputStream` / `InputStream` to add streaming run-length encoding without anyone caring. The server hands a wrapped stream to the generate path; the client unwraps with the matching decorator. Same maze bytes go in either side of the wrapper. |
+| **Template Method** | `ASearchingAlgorithm`, `AMazeGenerator`, `AMaze3DGenerator` | Shared concerns (counter reset, the per-node listener callback, timing) live in the base class; subclasses fill in only the variable bits (open structure for searchers, carve algorithm for generators). |
+| **Factory (Supplier)** | `SolveMazeStrategy(cache, () -> new BestFirstSearch())` | A fresh searcher per request, injected as a `Supplier` — keeps the strategy testable (the integration test verifies the cache by counting how often the supplier is invoked) and avoids leaking state across pooled solves. |
+| **Observer (callback)** | `ASearchingAlgorithm.setNodeEvaluatedListener(...)` | Lets the UI watch the search happen. The "Watch Search" button registers a listener that funnels each evaluated state into the canvas's visited-cells set on the JavaFX thread. Server / sync paths register no listener and pay nothing. |
 
 ---
 
@@ -203,7 +204,7 @@ src/test/java/...                            26 tests across compression, byte s
 - [x] **Phase 1** — Maven migration, MVVM scaffolding, Serializable refactor for the upcoming wire protocol, base + reset hook on `ASearchingAlgorithm` (fixes a real bug: early goal-find used to leave stale states in the BFS open list and corrupt the next reuse).
 - [x] **Phase 2** — Multi-threaded server, Decorator-pattern compression, content-addressed solution cache.
 - [x] **Phase 3** — JavaFX GUI: custom `MazeDisplayer` canvas (sprite-capable, falls back to drawn shapes so it works without assets), WASD / arrow-key movement, `Ctrl + scroll` zoom, victory sound via JavaFX `AudioClip` (with a `javax.sound.sampled` synthesized fallback when no audio file is bundled). The diagonal pinhole rule still governs `SearchableMaze` and therefore the search algorithm's edges. Background music slot in place — drop an mp3 in `src/main/resources/mazealgo/view/sounds/` to activate.
-- [ ] **Phase 4** — Algorithm visualizer: animated drawing of the solution path, a live `numberOfNodesEvaluated` counter, and a "watch the search happen" mode that colours cells as they enter the visited set. Full Javadoc generation.
+- [x] **Phase 4** — Algorithm visualizer: a **Solution Hint** button draws the optimal path on the canvas as an orange dotted line; a **Watch Search** button animates Best-First over a 3-second budget, painting each cell yellow as it enters the visited set; a live nodes-evaluated counter in the toolbar updates as the search proceeds. The `numberOfNodesEvaluated` observer hook on `ASearchingAlgorithm` is also useful outside the UI (server logs use it, the integration test asserts on it). `maven-javadoc-plugin` wired — `mvn javadoc:javadoc` generates the full API docs.
 
 ---
 

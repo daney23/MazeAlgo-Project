@@ -85,6 +85,20 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.2.0</version>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <source>17</source>
+                    <doctitle>MazeAlgo ${project.version} API</doctitle>
+                    <windowtitle>MazeAlgo ${project.version}</windowtitle>
+                    <show>protected</show>
+                    <quiet>true</quiet>
+                    <failOnError>false</failOnError>
+                    <doclint>none</doclint>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

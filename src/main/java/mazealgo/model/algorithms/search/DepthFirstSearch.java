@@ -26,6 +26,7 @@ public class DepthFirstSearch extends ASearchingAlgorithm {
             AState current = stack.pop();
             if (!visited.add(current)) continue;
             numberOfNodesEvaluated++;
+            onNodeEvaluated(current);
             if (current.equals(goal)) {
                 return new Solution(current);
             }

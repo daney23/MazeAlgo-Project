@@ -33,6 +33,35 @@
     -fx-background-color: #21618c;
 }
 
+.secondary-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ecf0f1;
+    -fx-border-color: #ecf0f1;
+    -fx-border-width: 1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 12px;
+}
+
+.secondary-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+.secondary-button:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+}
+
+.secondary-button:disabled {
+    -fx-opacity: 0.45;
+}
+
+.metric-label {
+    -fx-text-fill: #f1c40f;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 13px;
+    -fx-padding: 0 8px 0 0;
+}
+
 .maze-container {
     -fx-background-color: #ffffff;
     -fx-border-color: #bdc3c7;

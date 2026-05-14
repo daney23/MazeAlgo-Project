@@ -39,6 +39,7 @@ public class BreadthFirstSearch extends ASearchingAlgorithm {
             AState current = openList.poll();
             if (!visited.add(current)) continue;
             numberOfNodesEvaluated++;
+            onNodeEvaluated(current);
             if (current.equals(goal)) {
                 return new Solution(current);
             }
