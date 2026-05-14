@@ -9,7 +9,7 @@ This started as a university assignment and is being built out into a portfolio-
 ## TL;DR
 
 - **What it is.** A maze engine — generates 2D/3D mazes, solves them with BFS / DFS / Best-First (A* with admissible heuristics), and serves both operations over sockets.
-- **Status.** Phases 1–3 of 4 done. `mvn clean test` → BUILD SUCCESS, 36 / 36 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with NumPad 1–9 (diagonals included), zoom with `Ctrl + scroll`, and a synthesized arpeggio plays when you reach the goal.
+- **Status.** Phases 1–3 of 4 done. `mvn clean test` → BUILD SUCCESS, 36 / 36 tests pass. The JavaFX UI launches via `mvn javafx:run` — generate a maze, drive the player with WASD or the arrow keys, zoom with `Ctrl + scroll`, and a sound effect plays when you reach the goal.
 - **For the technically curious.** Adapter, Strategy, Decorator, and Template Method patterns all appear here in real load-bearing roles — not as toy examples. The server caches solutions on disk keyed by SHA-256 of the maze bytes; an integration test confirms the search algorithm runs exactly once across two identical requests.
 
 ---
@@ -195,7 +195,7 @@ src/test/java/...                            26 tests across compression, byte s
 
 - [x] **Phase 1** — Maven migration, MVVM scaffolding, Serializable refactor for the upcoming wire protocol, base + reset hook on `ASearchingAlgorithm` (fixes a real bug: early goal-find used to leave stale states in the BFS open list and corrupt the next reuse).
 - [x] **Phase 2** — Multi-threaded server, Decorator-pattern compression, content-addressed solution cache.
-- [x] **Phase 3** — JavaFX GUI: custom `MazeDisplayer` canvas (sprite-capable, falls back to drawn shapes so it works without assets), NumPad 1–9 movement including diagonals with the same pinhole rule as `SearchableMaze`, `Ctrl + scroll` zoom, synthesized victory chime via `javax.sound.sampled`. Background music slot in place — drop an mp3 in `src/main/resources/mazealgo/view/sounds/` to activate.
+- [x] **Phase 3** — JavaFX GUI: custom `MazeDisplayer` canvas (sprite-capable, falls back to drawn shapes so it works without assets), WASD / arrow-key movement, `Ctrl + scroll` zoom, victory sound via JavaFX `AudioClip` (with a `javax.sound.sampled` synthesized fallback when no audio file is bundled). The diagonal pinhole rule still governs `SearchableMaze` and therefore the search algorithm's edges. Background music slot in place — drop an mp3 in `src/main/resources/mazealgo/view/sounds/` to activate.
 - [ ] **Phase 4** — Algorithm visualizer: animated drawing of the solution path, a live `numberOfNodesEvaluated` counter, and a "watch the search happen" mode that colours cells as they enter the visited set. Full Javadoc generation.
 
 ---

@@ -32,7 +32,9 @@ public class SoundPlayer {
     private AudioClip victoryClip;
 
     public SoundPlayer() {
-        URL backgroundUrl = getClass().getResource("/mazealgo/view/sounds/background.mp3");
+        URL backgroundUrl = firstAvailable(
+                "/mazealgo/view/sounds/background.mp3",
+                "/mazealgo/view/sounds/background.wav");
         if (backgroundUrl != null) {
             try {
                 backgroundPlayer = new MediaPlayer(new Media(backgroundUrl.toExternalForm()));
@@ -43,7 +45,9 @@ public class SoundPlayer {
             }
         }
 
-        URL victoryUrl = getClass().getResource("/mazealgo/view/sounds/victory.wav");
+        URL victoryUrl = firstAvailable(
+                "/mazealgo/view/sounds/victory.mp3",
+                "/mazealgo/view/sounds/victory.wav");
         if (victoryUrl != null) {
             try {
                 victoryClip = new AudioClip(victoryUrl.toExternalForm());
@@ -51,6 +55,14 @@ public class SoundPlayer {
                 log.warn("Victory clip failed to load: {}", e.toString());
             }
         }
+    }
+
+    private URL firstAvailable(String... resourcePaths) {
+        for (String path : resourcePaths) {
+            URL url = getClass().getResource(path);
+            if (url != null) return url;
+        }
+        return null;
     }
 
     public void playBackground() {

@@ -24,7 +24,7 @@ import mazealgo.viewmodel.MovementDirection;
  *
  * <p>Input handling lives here:
  * <ul>
- *   <li>NumPad 1-9 (and the same digits on the main row) → {@code movePlayer}</li>
+ *   <li>WASD or arrow keys → {@code movePlayer} in the four cardinal directions</li>
  *   <li>Ctrl + scroll wheel anywhere on the canvas → zoom in/out</li>
  *   <li>Generate button → new maze with the spinner-selected dimensions</li>
  * </ul>
@@ -75,7 +75,7 @@ public class MazeViewController {
         // Victory chime on transition to true.
         viewModel.victoryProperty().addListener((obs, was, now) -> {
             if (now && !was) {
-                statusLabel.setText("Victory! NumPad 1-9 to move, or Generate for a new maze.");
+                statusLabel.setText("Victory! Hit Generate for a new maze.");
                 statusLabel.getStyleClass().add("victory-label");
                 soundPlayer.playVictory();
             } else if (!now) {
@@ -103,14 +103,12 @@ public class MazeViewController {
         int rows = rowsSpinner.getValue();
         int cols = colsSpinner.getValue();
         viewModel.generate(rows, cols);
-        statusLabel.setText(String.format("Generated %d×%d. NumPad 1-9 to move.", rows, cols));
+        statusLabel.setText(String.format("Generated %d×%d. WASD or Arrow keys to move.", rows, cols));
         root.requestFocus();
     }
 
     private void onKeyPressed(KeyEvent e) {
-        Integer digit = digitFromKey(e.getCode());
-        if (digit == null) return;
-        MovementDirection dir = MovementDirection.forNumpadDigit(digit);
+        MovementDirection dir = directionForKey(e.getCode());
         if (dir != null) {
             viewModel.movePlayer(dir);
             e.consume();
@@ -126,19 +124,20 @@ public class MazeViewController {
         e.consume();
     }
 
-    private static Integer digitFromKey(KeyCode code) {
-        // Accept both the NumPad keys and the main-row digits so laptops without
-        // a NumPad (or with NumLock off) still work.
+    /**
+     * WASD and arrow keys both drive the four cardinal directions.
+     * Diagonals are intentionally unmapped — the diagonal pinhole rule
+     * still governs the search algorithm's edges; players move
+     * orthogonally and the algorithm decides if a diagonal step would
+     * have been legal on the optimal path.
+     */
+    private static MovementDirection directionForKey(KeyCode code) {
         return switch (code) {
-            case NUMPAD1, DIGIT1 -> 1;
-            case NUMPAD2, DIGIT2 -> 2;
-            case NUMPAD3, DIGIT3 -> 3;
-            case NUMPAD4, DIGIT4 -> 4;
-            case NUMPAD6, DIGIT6 -> 6;
-            case NUMPAD7, DIGIT7 -> 7;
-            case NUMPAD8, DIGIT8 -> 8;
-            case NUMPAD9, DIGIT9 -> 9;
-            default -> null;
+            case W, UP    -> MovementDirection.UP;
+            case S, DOWN  -> MovementDirection.DOWN;
+            case A, LEFT  -> MovementDirection.LEFT;
+            case D, RIGHT -> MovementDirection.RIGHT;
+            default       -> null;
         };
     }
 }

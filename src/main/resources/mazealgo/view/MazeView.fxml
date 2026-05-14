@@ -44,7 +44,7 @@
                 <Insets top="8.0" right="14.0" bottom="8.0" left="14.0"/>
             </padding>
             <Label fx:id="statusLabel"
-                   text="Hit Generate to make a maze, then NumPad 1-9 to move. Ctrl + scroll to zoom."/>
+                   text="Hit Generate to make a maze, then WASD or Arrow keys to move. Ctrl + scroll to zoom."/>
         </HBox>
     </bottom>
 </BorderPane>
