@@ -1,8 +1,15 @@
 # MazeAlgo
 
-**A 2D / 3D maze generation and search engine with a multi-threaded server backend and (upcoming) JavaFX GUI.**
+[![Build](https://github.com/daney23/MazeAlgo-Project/actions/workflows/build.yml/badge.svg)](https://github.com/daney23/MazeAlgo-Project/actions/workflows/build.yml)
+
+**A 2D / 3D maze generation and search engine with a multi-threaded server backend and a JavaFX GUI.**
 
 This started as a university assignment and is being built out into a portfolio-grade project: clean MVVM separation, classic GoF design patterns, multi-threaded networking with smart caching, and full unit + integration test coverage.
+
+| | |
+|:---:|:---:|
+| ![Generated 20×20 maze](docs/screenshots/maze-overview.png) | ![5×7 detail view showing player and goal sprites](docs/screenshots/maze-detail.png) |
+| Generated 20×20 maze with player and "A Job" goal | Close-up showing the sprites + grid |
 
 ---
 
@@ -202,4 +209,4 @@ src/test/java/...                            26 tests across compression, byte s
 
 ## Author
 
-[[**daney23**](https://github.com/daney23) ] Eyal Dan — Software&Information Systems Engineering Student @BGU. Built on Windows with IntelliJ IDEA and JDK 17/25.
+[**daney23 — Eyal Dan**](https://github.com/daney23) — Software & Information Systems Engineering Student @ BGU. Built on Windows with IntelliJ IDEA and JDK 17 / 25.
