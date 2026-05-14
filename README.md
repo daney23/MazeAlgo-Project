@@ -128,14 +128,14 @@ The classic "recursive backtracker" rewritten with an explicit `Deque` stack so 
 
 ## Server protocol
 
-Two ports, one strategy each. The client speaks `Object` streams; the server-to-client direction is RLE-compressed for the generate endpoint.
+Two ports, one strategy each. The client speaks `Object` streams; the server-to-client direction is RLE-compressed for the generate endpoint. Ports 5400 / 5401 are the standalone-demo defaults — when the JavaFX app boots, it spawns both servers on OS-assigned ports instead.
 
 ```
-GENERATE (port 5400)
+GENERATE (default port 5400)
    client →  ObjectOutputStream  →  int[]{rows, columns}      →  server
    client  ←──── byte[] (RLE-compressed Maze.toByteArray) ────  server
 
-SOLVE (port 5401)
+SOLVE (default port 5401)
    client →  ObjectOutputStream  →  Maze                       →  server
    client  ←─────────── Solution ──────────────                 server
        (server consults SolutionCache before running search)
@@ -150,14 +150,17 @@ SOLVE (port 5401)
 You'll need JDK 17+ and Maven 3.6+.
 
 ```bash
-# Run all tests (Phase 1 + Phase 2: 26 tests)
+# Run all tests (42, all passing)
 mvn clean test
 
 # Compile only
 mvn compile
 
-# Run the JavaFX entrypoint (placeholder window — Phase 3 will fill the UI)
+# Launch the JavaFX UI
 mvn javafx:run
+
+# Generate the full API docs at target/site/apidocs/
+mvn javadoc:javadoc
 ```
 
 ### Demo: start the server, hit it from a client
@@ -180,22 +183,23 @@ mvn -q exec:java -Dexec.mainClass=mazealgo.examples.RunMazeClient
 
 ```
 src/main/java/mazealgo/
-├── MazeApp.java                            JavaFX Application entry
+├── MazeApp.java                            JavaFX Application entry — spawns embedded servers
 ├── Launcher.java                           workaround for non-modular JavaFX launch
 ├── model/
-│   ├── MazeModel.java                      facade (in-process; will delegate to server in Phase 3)
+│   ├── MazeModel.java                      facade — talks to the embedded servers over sockets
 │   ├── algorithms/
 │   │   ├── mazeGenerators/                 Maze, Position, generators (Empty/Simple/My)
 │   │   ├── maze3D/                         Maze3D, Position3D, generators, SearchableMaze3D
 │   │   └── search/                         ISearchable, AState, BFS, DFS, BestFirstSearch, SearchableMaze, Solution
 │   ├── io/                                 MyCompressorOutputStream, MyDecompressorInputStream
 │   └── server/                             MyServer, IServerStrategy, Generate/SolveMazeStrategy, SolutionCache
-├── view/                                   FXML controllers
-├── viewmodel/                              JavaFX-property bridge
+├── view/                                   MazeDisplayer / Maze3DDisplayer canvases, controller, SoundPlayer
+├── viewmodel/                              MazeViewModel + MovementDirection — JavaFX-property bridge
 └── examples/                               manual runners + RunMazeServer/RunMazeClient
 
-src/test/java/...                            26 tests across compression, byte serialization,
-                                             cache, search correctness, and end-to-end server
+src/test/java/...                            42 tests across compression, byte serialization,
+                                             cache, search correctness, ViewModel movement rules,
+                                             the listener contract, and end-to-end server
 ```
 
 ---
