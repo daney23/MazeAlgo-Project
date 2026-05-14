@@ -96,14 +96,19 @@ public class MazeViewModel {
         }
     }
 
-    /** Solves synchronously and shows the path. Used by the "Solution Hint" button. */
+    /**
+     * Solves synchronously and shows the path. Used by the "Solution Hint"
+     * button. Routes through {@link MazeModel#solve(Maze)} — in the JavaFX
+     * app that's a socket call to the embedded SolveMazeStrategy (so the
+     * solution flows through the Phase 2 cache); in tests it stays
+     * in-process.
+     */
     public void solveCurrent() {
         Maze m = maze.get();
         if (m == null) return;
-        BestFirstSearch searcher = new BestFirstSearch();
-        Solution sol = searcher.solve(new SearchableMaze(m));
+        Solution sol = model.solve(m);
         solution.set(sol);
-        nodesEvaluated.set(searcher.getNumberOfNodesEvaluated());
+        nodesEvaluated.set(sol.getNodesEvaluated());
         solved.set(true);
     }
 

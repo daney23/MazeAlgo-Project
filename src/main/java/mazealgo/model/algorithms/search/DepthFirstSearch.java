@@ -28,7 +28,7 @@ public class DepthFirstSearch extends ASearchingAlgorithm {
             numberOfNodesEvaluated++;
             onNodeEvaluated(current);
             if (current.equals(goal)) {
-                return new Solution(current);
+                return buildSolution(current);
             }
             for (AState next : domain.getAllPossibleStates(current)) {
                 if (!visited.contains(next)) {
@@ -36,7 +36,7 @@ public class DepthFirstSearch extends ASearchingAlgorithm {
                 }
             }
         }
-        return new Solution(null);
+        return buildSolution(null);
     }
 
     @Override

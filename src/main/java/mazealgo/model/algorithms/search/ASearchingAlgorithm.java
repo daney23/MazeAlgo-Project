@@ -39,6 +39,21 @@ public abstract class ASearchingAlgorithm implements ISearchingAlgorithm {
     }
 
     /**
+     * Helper used by subclasses to construct a {@link Solution} with
+     * the current node-evaluation count already stamped on it — so the
+     * count survives the wire when a server returns a Solution to a
+     * remote client.
+     *
+     * @param lastState the goal state if found, {@code null} for an
+     *                  unsolvable maze (yields an empty path)
+     */
+    protected final Solution buildSolution(AState lastState) {
+        Solution sol = new Solution(lastState);
+        sol.setNodesEvaluated(numberOfNodesEvaluated);
+        return sol;
+    }
+
+    /**
      * Resets per-solve state. Subclasses with their own mutable state
      * (e.g. an open list) should override this and call {@code super.reset()}.
      */

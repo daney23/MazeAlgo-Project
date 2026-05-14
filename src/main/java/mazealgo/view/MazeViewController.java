@@ -43,8 +43,21 @@ public class MazeViewController {
     private static final double MAX_ZOOM = 4.0;
     private static final double ZOOM_STEP = 1.1;
 
-    private final MazeViewModel viewModel = new MazeViewModel(new MazeModel());
+    private final MazeViewModel viewModel;
     private final SoundPlayer soundPlayer = new SoundPlayer();
+
+    /** Default ctor — used when FXMLLoader has no controller factory. In-process model. */
+    public MazeViewController() {
+        this(new MazeModel());
+    }
+
+    /**
+     * Used by {@link mazealgo.MazeApp} via FXMLLoader.setControllerFactory to
+     * inject the server-wired model so Generate / Solution Hint go over sockets.
+     */
+    public MazeViewController(MazeModel model) {
+        this.viewModel = new MazeViewModel(model);
+    }
 
     @FXML private BorderPane root;
     @FXML private Pane mazeContainer;

@@ -6,18 +6,23 @@ import java.util.Collections;
 
 /**
  * The path returned by a search algorithm: an ordered list of states
- * from start to goal (inclusive). Built by walking cameFrom from the
- * goal back to the start, then reversing.
+ * from start to goal (inclusive). Built by walking {@code cameFrom}
+ * from the goal back to the start, then reversing.
  *
- * <p>Serializable so the server can return a solved path to the client
- * over an ObjectOutputStream. Once constructed, the Solution is fully
- * self-contained - it holds its own list of states and no longer
- * depends on the search algorithm or the visited set.
+ * <p>Carries the number of nodes the producing algorithm evaluated so
+ * the UI can keep its "Nodes: N" counter accurate even when the solve
+ * happened on the server (the count survives the
+ * {@link java.io.ObjectOutputStream} roundtrip).
+ *
+ * <p>Once constructed, the Solution is fully self-contained — it holds
+ * its own list of states and no longer depends on the search algorithm
+ * or the visited set.
  */
 public class Solution implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final ArrayList<AState> path;
+    private int nodesEvaluated;
 
     public Solution(AState goal) {
         path = new ArrayList<>();
@@ -31,5 +36,13 @@ public class Solution implements Serializable {
 
     public ArrayList<AState> getSolutionPath() {
         return path;
+    }
+
+    public int getNodesEvaluated() {
+        return nodesEvaluated;
+    }
+
+    public void setNodesEvaluated(int nodesEvaluated) {
+        this.nodesEvaluated = nodesEvaluated;
     }
 }

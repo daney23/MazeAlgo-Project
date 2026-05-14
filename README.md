@@ -74,7 +74,7 @@ This started as a university assignment and is being built out into a portfolio-
                            └──────────────────────────────────┘
 ```
 
-The Server layer reuses the same `MyMazeGenerator` and `BestFirstSearch` the in-process Model uses — there is one source of truth for maze logic.
+**The UI talks to the server, not the algorithms directly.** When you launch `mvn javafx:run`, `MazeApp.start()` spawns two embedded `MyServer` instances on OS-assigned ports (one hosting `GenerateMazeStrategy`, one hosting `SolveMazeStrategy`) and injects those ports into `MazeModel` via the FXMLLoader controller factory. Every **Generate** click sends `int[]{rows, cols}` over a socket, receives RLE-compressed bytes, and reconstructs the `Maze`. Every **Solution Hint** click sends the `Maze` over a socket and receives a `Solution` from the SHA-256-keyed cache (or a fresh Best-First run on cache miss). The **Watch Search** mode stays in-process — it needs the per-node observer callback that the server protocol doesn't stream.
 
 ---
 
