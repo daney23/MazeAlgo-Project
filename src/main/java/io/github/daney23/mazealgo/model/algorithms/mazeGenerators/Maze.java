@@ -1,14 +1,25 @@
 package io.github.daney23.mazealgo.model.algorithms.mazeGenerators;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
 
 /**
  * A 2D maze: an int grid where 1 is a wall and 0 is a passable cell,
  * with a start position and a goal position.
  *
- * <p>Serializable so the server can return a generated maze to the
- * client over an ObjectOutputStream. The compression decorator (Phase 2)
- * will write a tighter run-length encoding on top of this default form.
+ * <p>Two wire formats:
+ * <ul>
+ *   <li>Default Java serialization (via {@link Serializable}) — convenient
+ *       but verbose. Used by SolveMazeStrategy where the maze travels
+ *       client-to-server once and the overhead doesn't dominate.
+ *   <li>{@link #toByteArray()} / {@link #Maze(byte[])} — compact, fixed
+ *       header + flat grid bytes. Wrapped by MyCompressorOutputStream's
+ *       run-length encoding when shipping back from GenerateMazeStrategy.
+ * </ul>
  */
 public class Maze implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -23,6 +34,63 @@ public class Maze implements Serializable {
         this.rows = rows;
         this.columns = columns;
         this.grid = new int[rows][columns];
+    }
+
+    /**
+     * Reconstructs a maze from {@link #toByteArray()}. Throws
+     * {@link IllegalArgumentException} if the byte stream is truncated
+     * or malformed (typically: caller passed something that wasn't
+     * produced by toByteArray).
+     */
+    public Maze(byte[] bytes) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(bytes))) {
+            this.rows = in.readInt();
+            this.columns = in.readInt();
+            int startRow = in.readInt();
+            int startCol = in.readInt();
+            int goalRow = in.readInt();
+            int goalCol = in.readInt();
+            this.grid = new int[rows][columns];
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < columns; c++) {
+                    grid[r][c] = in.readByte() & 0xFF;
+                }
+            }
+            this.start = new Position(startRow, startCol);
+            this.goal = new Position(goalRow, goalCol);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Invalid maze byte representation", e);
+        }
+    }
+
+    /**
+     * Compact byte representation: six big-endian ints (rows, columns,
+     * start row/col, goal row/col) followed by rows*columns single bytes
+     * — one per cell, value 0 or 1. Mirrored by {@link #Maze(byte[])}.
+     *
+     * <p>The grid portion is what {@code MyCompressorOutputStream} runs
+     * RLE over; the header is varied enough that compression doesn't
+     * help it, but the grid (long runs of 0 or 1) shrinks dramatically.
+     */
+    public byte[] toByteArray() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(baos)) {
+            out.writeInt(rows);
+            out.writeInt(columns);
+            out.writeInt(start.getRowIndex());
+            out.writeInt(start.getColumnIndex());
+            out.writeInt(goal.getRowIndex());
+            out.writeInt(goal.getColumnIndex());
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < columns; c++) {
+                    out.writeByte(grid[r][c]);
+                }
+            }
+        } catch (IOException impossible) {
+            // ByteArrayOutputStream never throws — assert and move on.
+            throw new AssertionError(impossible);
+        }
+        return baos.toByteArray();
     }
 
     public int getRows() {
