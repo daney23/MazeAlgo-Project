@@ -199,4 +199,4 @@ src/test/java/...                            26 tests across compression, byte s
 
 ## Author
 
-[**daney23**](https://github.com/daney23) — CS undergrad. Built on Windows with IntelliJ IDEA and JDK 17/25.
+[[**daney23**](https://github.com/daney23) ] Eyal Dan — Software&Information Systems Engineering Student @BGU. Built on Windows with IntelliJ IDEA and JDK 17/25.
