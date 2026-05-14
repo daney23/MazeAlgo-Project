@@ -1,6 +1,7 @@
 # MazeAlgo
 
 [![Build](https://github.com/daney23/MazeAlgo-Project/actions/workflows/build.yml/badge.svg)](https://github.com/daney23/MazeAlgo-Project/actions/workflows/build.yml)
+[![Javadoc](https://github.com/daney23/MazeAlgo-Project/actions/workflows/javadoc.yml/badge.svg)](https://daney23.github.io/MazeAlgo-Project/)
 
 **A 2D / 3D maze generation and search engine with a multi-threaded server backend and a JavaFX GUI.**
 
