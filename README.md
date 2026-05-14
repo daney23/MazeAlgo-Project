@@ -85,7 +85,7 @@ The Server layer reuses the same `MyMazeGenerator` and `BestFirstSearch` the in-
 
 ### Best-First Search (A\*-like)
 
-`src/main/java/io/github/daney23/mazealgo/model/algorithms/search/BestFirstSearch.java`
+`src/main/java/mazealgo/model/algorithms/search/BestFirstSearch.java`
 
 Reuses the BFS skeleton but swaps the FIFO queue for a `PriorityQueue` ordered by `cost-so-far + domain.heuristic(state, goal)`. Because the heuristics in `SearchableMaze` and `SearchableMaze3D` are admissible, the returned path is optimal.
 
@@ -98,7 +98,7 @@ return super.solve(domain);
 
 ### Octile distance heuristic (2D, with diagonals)
 
-`src/main/java/io/github/daney23/mazealgo/model/algorithms/search/SearchableMaze.java`
+`src/main/java/mazealgo/model/algorithms/search/SearchableMaze.java`
 
 ```java
 // 10 * max(|dr|,|dc|) + 5 * min(|dr|,|dc|)
@@ -108,7 +108,7 @@ return 10 * Math.max(dr, dc) + 5 * Math.min(dr, dc);
 
 ### Iterative randomized DFS maze generator
 
-`src/main/java/io/github/daney23/mazealgo/model/algorithms/mazeGenerators/MyMazeGenerator.java`
+`src/main/java/mazealgo/model/algorithms/mazeGenerators/MyMazeGenerator.java`
 
 The classic "recursive backtracker" rewritten with an explicit `Deque` stack so it scales to mazes larger than the JVM thread stack would allow.
 
@@ -154,10 +154,10 @@ In two terminals:
 
 ```bash
 # Terminal 1
-mvn -q exec:java -Dexec.mainClass=io.github.daney23.mazealgo.examples.RunMazeServer
+mvn -q exec:java -Dexec.mainClass=mazealgo.examples.RunMazeServer
 
 # Terminal 2
-mvn -q exec:java -Dexec.mainClass=io.github.daney23.mazealgo.examples.RunMazeClient
+mvn -q exec:java -Dexec.mainClass=mazealgo.examples.RunMazeClient
 ```
 
 (The integration test does the same thing in-process, so the demo isn't load-bearing — it's just for visual confirmation.)
@@ -167,7 +167,7 @@ mvn -q exec:java -Dexec.mainClass=io.github.daney23.mazealgo.examples.RunMazeCli
 ## Project structure
 
 ```
-src/main/java/io/github/daney23/mazealgo/
+src/main/java/mazealgo/
 ├── MazeApp.java                            JavaFX Application entry
 ├── Launcher.java                           workaround for non-modular JavaFX launch
 ├── model/
