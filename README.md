@@ -9,8 +9,8 @@ This started as a university assignment and is being built out into a portfolio-
 
 | | |
 |:---:|:---:|
-| ![Generated 20×20 maze](docs/screenshots/maze-overview.png) | ![5×7 detail view showing player and goal sprites](docs/screenshots/maze-detail.png) |
-| Generated 20×20 maze with player and "A Job" goal | Close-up showing the sprites + grid |
+| ![Generated 20×20 2D maze with player and goal sprites](docs/screenshots/maze-2d.png) | ![3D maze rendered as a rotatable cube with depth layers](docs/screenshots/maze-3d.png) |
+| 2D mode — 20×20 maze, player at start, "A Job" goal at bottom-right | 3D mode — rotatable cube with Focus combo for isolating a single layer |
 
 ---
 
