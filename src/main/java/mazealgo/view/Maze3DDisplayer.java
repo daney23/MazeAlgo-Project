@@ -53,8 +53,10 @@ import java.util.Map;
  *   <li><b>Right-click</b> resets the rotation to the default
  *       isometric pose.</li>
  *   <li>{@link #focusedLayerProperty()} isolates one layer — all other
- *       layers and the solution path are hidden. Value {@code -1} shows
- *       every layer plus the solution.</li>
+ *       layers' walls / floors / markers are hidden. The solution path
+ *       and the search-visited trail stay visible across layers so the
+ *       user can still see where the algorithm ran. Value {@code -1}
+ *       shows every layer.</li>
  * </ul>
  *
  * <p>Visited cells fade in during Watch Search animations over
@@ -110,6 +112,9 @@ public class Maze3DDisplayer extends Pane {
     private final Group worldRoot = new Group();
     private final Group mazeRoot = new Group();
     private final Group solutionRoot = new Group();
+    // Visited cells live in their own group (not inside per-layer groups) so
+    // they stay visible when the user isolates a single layer.
+    private final Group visitedRoot = new Group();
     private final Rotate rotX = new Rotate(DEFAULT_PITCH_DEG, Rotate.X_AXIS);
     private final Rotate rotY = new Rotate(DEFAULT_YAW_DEG, Rotate.Y_AXIS);
     private final Translate cameraT = new Translate(0, 0, -600);
@@ -162,7 +167,7 @@ public class Maze3DDisplayer extends Pane {
         fill.setTranslateZ(-100);
 
         worldRoot.getTransforms().addAll(rotY, rotX);
-        worldRoot.getChildren().addAll(mazeRoot, solutionRoot);
+        worldRoot.getChildren().addAll(mazeRoot, solutionRoot, visitedRoot);
         sceneRoot.getChildren().addAll(worldRoot, ambient, key, fill);
 
         getChildren().add(subScene);
@@ -199,6 +204,7 @@ public class Maze3DDisplayer extends Pane {
     private void rebuildScene() {
         mazeRoot.getChildren().clear();
         solutionRoot.getChildren().clear();
+        visitedRoot.getChildren().clear();
         layerGroups.clear();
         startGlowSphere = null;
 
@@ -383,7 +389,7 @@ public class Maze3DDisplayer extends Pane {
         cell.setTranslateY(ms.getRow() * CELL_SIZE - halfH);
         cell.setTranslateZ(layerZ);
         cell.setOpacity(0);
-        layerGroups.get(ms.getDepth()).getChildren().add(cell);
+        visitedRoot.getChildren().add(cell);
 
         visitedNodes.put(state, cell);
         visitedAt.put(state, System.currentTimeMillis());
@@ -465,9 +471,10 @@ public class Maze3DDisplayer extends Pane {
         for (int i = 0; i < layerGroups.size(); i++) {
             layerGroups.get(i).setVisible(focus < 0 || focus == i);
         }
-        // Solution path threads through every layer — hide it while a
-        // single layer is isolated so the focused layer reads cleanly.
-        solutionRoot.setVisible(focus < 0);
+        // Solution path and visited trail live in their own groups so they
+        // stay visible regardless of which layer is isolated — the user
+        // still sees where the search went / where the path runs through
+        // hidden layers.
     }
 
     // ─── Properties ──────────────────────────────────────────────────
